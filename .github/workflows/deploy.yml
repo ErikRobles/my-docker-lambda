@@ -18,7 +18,7 @@ jobs:
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/YourGitHubOIDCDeployRole
+          role-to-assume: arn:aws:iam::156029953430:role/YourGitHubOIDCDeployRole
           aws-region: us-east-1
 
       - name: Build Docker image
@@ -27,15 +27,15 @@ jobs:
       - name: Login to ECR
         run: |
           aws ecr get-login-password --region us-east-1 \
-          | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+          | docker login --username AWS --password-stdin 156029953430.dkr.ecr.us-east-1.amazonaws.com
 
       - name: Tag Docker image
-        run: docker tag my-docker-lambda:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
+        run: docker tag my-docker-lambda:latest 156029953430.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
 
       - name: Push Docker image
-        run: docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
+        run: docker push 156029953430.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
 
       - name: Update Lambda to use new container image
         run: aws lambda update-function-code \
           --function-name MyDockerLambdaFunction \
-          --image-uri <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
+          --image-uri 156029953430.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
