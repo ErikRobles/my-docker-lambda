@@ -1,0 +1,41 @@
+name: Deploy Lambda
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/YourGitHubOIDCDeployRole
+          aws-region: us-east-1
+
+      - name: Build Docker image
+        run: docker build -t my-docker-lambda:latest .
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 \
+          | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+
+      - name: Tag Docker image
+        run: docker tag my-docker-lambda:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
+
+      - name: Push Docker image
+        run: docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
+
+      - name: Update Lambda to use new container image
+        run: aws lambda update-function-code \
+          --function-name MyDockerLambdaFunction \
+          --image-uri <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/my-docker-lambda:latest
