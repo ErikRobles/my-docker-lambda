@@ -2,12 +2,25 @@ const AWS = require('aws-sdk');
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME || 'MyDockerLambdaTable';
 
+// These are the ARNs for your EventBridge rules. Update these values accordingly.
+const FIVE_MINUTE_RULE_ARN = `arn:aws:events:us-east-1:156029953430:rule/MyFiveMinuteRule`;
+const TWENTY_MINUTE_RULE_ARN = `arn:aws:events:us-east-1:156029953430:rule/MyTwentyMinuteRule`;
+
 exports.handler = async (event) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
 
-    // Extract action from the event. Default to "add" if none provided, but ideally
-    // the EventBridge rule should always provide an action.
-    const action = event.action || 'add';
+    let action = 'add'; // default action
+    
+    // Check which EventBridge rule triggered this Lambda.
+    // EventBridge puts the ARN of the triggering rule in event.resources array.
+    if (Array.isArray(event.resources)) {
+        if (event.resources.includes(TWENTY_MINUTE_RULE_ARN)) {
+            action = 'clear';
+        } else if (event.resources.includes(FIVE_MINUTE_RULE_ARN)) {
+            action = 'add';
+        }
+    }
+
     console.log(`Action determined: ${action}`);
 
     if (action === 'add') {
@@ -46,3 +59,4 @@ exports.handler = async (event) => {
         return { statusCode: 400, body: 'Unknown action.' };
     }
 };
+
