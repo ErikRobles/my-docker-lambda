@@ -3,26 +3,38 @@ const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME || 'MyDockerLambdaTable';
 
 exports.handler = async (event) => {
-    const now = Date.now();
-    const intervalCount = Math.floor((now - (process.env.START_TIME || now)) / (5 * 60 * 1000)) || 0;
+    // The action will be passed through EventBridge event input transformer
+    const action = event.action || 'add';
 
-    // Add a new item
-    const newItem = { id: `item-${now}`, timestamp: now };
-    await dynamo.put({ TableName: TABLE_NAME, Item: newItem }).promise();
+    if (action === 'add') {
+        // Add a new item
+        const now = Date.now();
+        const newItem = { id: `item-${now}`, timestamp: now };
+        await dynamo.put({ TableName: TABLE_NAME, Item: newItem }).promise();
 
-    // Read all items
-    const data = await dynamo.scan({ TableName: TABLE_NAME }).promise();
-    const items = data.Items;
-    console.log(`Current items in DynamoDB:`, items);
+        // Read all items
+        const data = await dynamo.scan({ TableName: TABLE_NAME }).promise();
+        const items = data.Items;
+        console.log(`Current items in DynamoDB:`, items);
 
-    // Every 20 minutes
-    if ((intervalCount % 4) === 0 && intervalCount !== 0) {
-        console.log(`20 minutes passed. Clearing table...`);
+        // No clearing here, just add/read
+        return { statusCode: 200, body: 'Items added/read successfully.' };
+
+    } else if (action === 'clear') {
+        // Clear the table
+        console.log(`Clearing table...`);
+        const data = await dynamo.scan({ TableName: TABLE_NAME }).promise();
+        const items = data.Items || [];
+
         for (let item of items) {
             await dynamo.delete({ TableName: TABLE_NAME, Key: { id: item.id } }).promise();
         }
+
         console.log(`Table cleared. Now empty.`);
+        return { statusCode: 200, body: 'Table cleared.' };
     }
 
-    return { statusCode: 200, body: 'Success' };
+    // If no recognized action
+    return { statusCode: 400, body: 'Unknown action.' };
 };
+
